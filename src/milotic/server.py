@@ -1,9 +1,11 @@
 """FastMCP entrypoint."""
 
 import os
+
 from dotenv import load_dotenv
+
 from milotic.app import mcp
-from milotic.utils.logging import setup_logging, logger
+from milotic.utils.logging import logger, setup_logging
 
 # Load environment variables
 load_dotenv()
