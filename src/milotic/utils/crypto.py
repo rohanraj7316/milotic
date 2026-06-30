@@ -1,10 +1,12 @@
 """
 AES-256-GCM encryption utility matching the be-middlewares Go implementation.
 """
-import os
 import base64
 import json
+import os
+
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+
 from milotic.utils.errors import CryptoError, DecryptionError
 
 # Constants from be-middlewares/libs/apicrypto/helpers/aes.go

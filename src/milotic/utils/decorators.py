@@ -1,9 +1,12 @@
 import functools
-import time
 import inspect
-from typing import Any, Callable
-from milotic.utils.logging import logger
+import time
+from collections.abc import Callable
+from typing import Any
+
 from milotic.utils.errors import MiloticError
+from milotic.utils.logging import logger
+
 
 def milotic_tool(func: Callable) -> Callable:
     """
@@ -21,11 +24,11 @@ def milotic_tool(func: Callable) -> Callable:
             logger.info("tool_call_success", tool=tool_name, duration_ms=round(duration * 1000, 2))
             return result
         except MiloticError as e:
-            logger.error("tool_call_error_known", tool=tool_name, error=str(e), error_type=e.__class__.__name__)
+            logger.error("tool_call_error_known", tool=tool_name, error=str(e), error_type=e.__class__.__name__)  # noqa: E501
             return {"error": str(e), "category": e.__class__.__name__}
         except Exception as e:
             logger.exception("tool_call_error_unexpected", tool=tool_name, error=str(e))
-            return {"error": "An internal error occurred while processing the request.", "category": "InternalError"}
+            return {"error": "An internal error occurred while processing the request.", "category": "InternalError"}  # noqa: E501
 
     @functools.wraps(func)
     def sync_wrapper(*args, **kwargs) -> Any:
@@ -38,11 +41,11 @@ def milotic_tool(func: Callable) -> Callable:
             logger.info("tool_call_success", tool=tool_name, duration_ms=round(duration * 1000, 2))
             return result
         except MiloticError as e:
-            logger.error("tool_call_error_known", tool=tool_name, error=str(e), error_type=e.__class__.__name__)
+            logger.error("tool_call_error_known", tool=tool_name, error=str(e), error_type=e.__class__.__name__)  # noqa: E501
             return {"error": str(e), "category": e.__class__.__name__}
         except Exception as e:
             logger.exception("tool_call_error_unexpected", tool=tool_name, error=str(e))
-            return {"error": "An internal error occurred while processing the request.", "category": "InternalError"}
+            return {"error": "An internal error occurred while processing the request.", "category": "InternalError"}  # noqa: E501
 
     if inspect.iscoroutinefunction(func):
         return async_wrapper

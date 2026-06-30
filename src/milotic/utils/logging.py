@@ -1,8 +1,9 @@
-import structlog
 import logging
-import sys
 import re
-from typing import List, Dict, Any
+import sys
+from typing import Any
+
+import structlog
 
 # Keywords that trigger redaction in log values
 SECRET_KEYWORDS = [
@@ -12,7 +13,7 @@ REDACTION_PATTERN = re.compile(
     "|".join(f"\\b{key}\\b" for key in SECRET_KEYWORDS), re.IGNORECASE
 )
 
-def redact_secrets_processor(_, __, event_dict: Dict[str, Any]) -> Dict[str, Any]:
+def redact_secrets_processor(_, __, event_dict: dict[str, Any]) -> dict[str, Any]:
     """
     A structlog processor to recursively redact sensitive information from logs.
     """
@@ -34,7 +35,7 @@ def setup_logging(log_level: str = "INFO"):
         level=getattr(logging, log_level.upper()),
     )
 
-    processors: List[Any] = [
+    processors: list[Any] = [
         structlog.contextvars.merge_contextvars,
         structlog.processors.add_log_level,
         structlog.processors.StackInfoRenderer(),
