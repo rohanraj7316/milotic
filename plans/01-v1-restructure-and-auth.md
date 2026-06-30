@@ -64,14 +64,14 @@ name without benefit. Confirmed in prior discussion as low-risk given test/build
    sources = {"src" = "milotic"}
    ```
    (replaces `packages = ["src/milotic"]`)
-3. Do NOT touch any `from milotic.X import Y` or `import milotic.X` statements anywhere —
+3. Do NOT touch any `from X import Y` or `import X` statements anywhere —
    in source or tests. The whole point of the `sources` remapping is that these stay valid.
 4. Update `.vscode/settings.json` if it references `src/milotic` paths directly (check first;
    may only reference `src` as a pythonpath entry, in which case no change needed).
 
 **Verification checklist:**
 1. `uv sync` — must complete without error
-2. `python -c "import milotic; print(milotic.__file__)"` (via `uv run`) — must print a path
+2. `python -c "import milotic; print(__file__)"` (via `uv run`) — must print a path
    ending in `src/__init__.py`. If `ModuleNotFoundError`, STOP — do not proceed to Phase 2.
 3. `uv run pytest` — all existing tests must pass unchanged (no test file edits in this phase)
 4. `uv run fastmcp inspect src/app.py:mcp` — must list the same tools as before the move
@@ -92,8 +92,8 @@ blocker instead of guessing at alternate hatchling config.
 
 1. **`src/utils/session.py`** (new file):
    ```python
-   from milotic.api.base import BaseClient
-   from milotic.utils.errors import BackendConnectionError
+   from api.base import BaseClient
+   from utils.errors import BackendConnectionError
    # exact ctx.get_state signature from Phase 0 findings — do not guess
 
    async def get_session_headers(ctx) -> dict[str, str]:

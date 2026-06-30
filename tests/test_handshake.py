@@ -5,8 +5,8 @@ import pytest_asyncio
 import respx
 from httpx import Response
 
-from milotic.api.handshake import HandshakeClient
-from milotic.utils.errors import HandshakeError
+from api.handshake import HandshakeClient
+from utils.errors import HandshakeError
 
 # Sample from be-middlewares/libs/apicrypto/handshake_test.go
 # This is a placeholder; a real key would be much longer.

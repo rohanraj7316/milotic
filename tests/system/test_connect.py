@@ -4,11 +4,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from milotic.components.system.system import system_connect_start, system_connect_verify
+from components.system.system import system_connect_start, system_connect_verify
 
 
 @pytest.mark.asyncio
-@patch("milotic.api.base.BaseClient.post", new_callable=AsyncMock)
+@patch("api.base.BaseClient.post", new_callable=AsyncMock)
 async def test_system_connect_start_success(mock_post: AsyncMock, mock_env):
     mock_post.return_value = {"session_id": "abc123", "qr_image_base64": "fakedata"}
 
@@ -22,7 +22,7 @@ async def test_system_connect_start_success(mock_post: AsyncMock, mock_env):
 
 
 @pytest.mark.asyncio
-@patch("milotic.api.base.BaseClient.get", new_callable=AsyncMock)
+@patch("api.base.BaseClient.get", new_callable=AsyncMock)
 async def test_system_connect_verify_confirmed(mock_get: AsyncMock, mock_env):
     mock_get.return_value = {
         "status": "confirmed",
@@ -42,7 +42,7 @@ async def test_system_connect_verify_confirmed(mock_get: AsyncMock, mock_env):
 
 
 @pytest.mark.asyncio
-@patch("milotic.api.base.BaseClient.get", new_callable=AsyncMock)
+@patch("api.base.BaseClient.get", new_callable=AsyncMock)
 async def test_system_connect_verify_pending(mock_get: AsyncMock, mock_env):
     mock_get.return_value = {"status": "pending"}
 
@@ -60,7 +60,7 @@ async def test_system_connect_verify_no_session(mock_env):
     ctx = AsyncMock()
     ctx.get_state.return_value = None
 
-    with patch("milotic.api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
+    with patch("api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
         result = await system_connect_verify(ctx)
 
     assert result == {"error": "No pending connection. Call system_connect_start first."}

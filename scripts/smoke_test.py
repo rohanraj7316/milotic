@@ -16,8 +16,8 @@ load_dotenv()
 
 
 async def main():
-    from milotic.api.base import BaseClient
-    from milotic.config import settings
+    from api.base import BaseClient
+    from config import settings
 
     print(f"CRYPTO_ENABLED : {settings.CRYPTO_ENABLED}")
     print(f"MARKET_BACKEND_URL: {settings.MARKET_BACKEND_URL}")

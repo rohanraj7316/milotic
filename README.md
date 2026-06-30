@@ -144,8 +144,8 @@ milotic/
 
 ```python
 from fastmcp.tools import tool
-from milotic.utils.decorators import milotic_tool
-from milotic.api.base import BaseClient
+from utils.decorators import milotic_tool
+from api.base import BaseClient
 
 @tool()
 @milotic_tool

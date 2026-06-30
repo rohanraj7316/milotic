@@ -1,7 +1,7 @@
 import pytest
 
-from milotic.utils.crypto import MiloticCipher
-from milotic.utils.errors import CryptoError, DecryptionError
+from utils.crypto import MiloticCipher
+from utils.errors import CryptoError, DecryptionError
 
 # Use a 32-byte key for AES-256
 SECRET_KEY = "0123456789abcdef0123456789abcdef"

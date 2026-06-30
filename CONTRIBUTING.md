@@ -13,7 +13,7 @@ All tools must follow the `category_action_entity` pattern.
 Every tool must use both the `@tool` decorator from `fastmcp.tools` and the custom `@milotic_tool` decorator.
 ```python
 from fastmcp.tools import tool
-from milotic.utils.decorators import milotic_tool
+from utils.decorators import milotic_tool
 
 @tool()
 @milotic_tool

@@ -2,7 +2,7 @@
 
 import pytest
 
-from milotic.app import mcp
+from app import mcp
 
 
 @pytest.mark.asyncio

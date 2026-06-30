@@ -4,7 +4,7 @@ import importlib
 
 import pytest
 
-from milotic.api.base import BaseClient
+from api.base import BaseClient
 
 
 @pytest.fixture(autouse=True)
@@ -26,5 +26,5 @@ def mock_env(monkeypatch):
     monkeypatch.setenv("TRADING_BACKEND_URL", "http://trading.test")
     monkeypatch.setenv("RESEARCH_BACKEND_URL", "http://research.test")
 
-    import milotic.config as cfg
+    import config as cfg
     importlib.reload(cfg)

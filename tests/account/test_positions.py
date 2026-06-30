@@ -6,8 +6,8 @@ import httpx
 import pytest
 import respx
 
-from milotic.api.base import BaseClient
-from milotic.components.account.positions import (
+from api.base import BaseClient
+from components.account.positions import (
     account_get_position,
     account_list_positions,
 )
@@ -36,7 +36,7 @@ async def test_account_list_positions_success(mock_env):
 
 
 @pytest.mark.asyncio
-@patch("milotic.api.base.BaseClient.get", new_callable=AsyncMock)
+@patch("api.base.BaseClient.get", new_callable=AsyncMock)
 async def test_account_list_positions_uses_session_headers(mock_get: AsyncMock, mock_env):
     mock_get.return_value = {"positions": []}
     ctx = make_ctx()
@@ -51,7 +51,7 @@ async def test_account_list_positions_uses_session_headers(mock_get: AsyncMock, 
 
 
 @pytest.mark.asyncio
-@patch("milotic.api.base.BaseClient.get", new_callable=AsyncMock)
+@patch("api.base.BaseClient.get", new_callable=AsyncMock)
 async def test_account_get_position_uses_session_headers(mock_get: AsyncMock, mock_env):
     mock_get.return_value = {"symbol": "AAPL", "quantity": 10}
     ctx = make_ctx()
@@ -70,7 +70,7 @@ async def test_account_list_positions_not_connected_returns_error(mock_env):
     ctx = AsyncMock()
     ctx.get_state.return_value = None
 
-    with patch("milotic.api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
+    with patch("api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
         result = await account_list_positions(ctx)
 
     assert "error" in result

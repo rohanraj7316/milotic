@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from milotic.components.trading.margin import trading_calculate_margin, trading_get_margin
+from components.trading.margin import trading_calculate_margin, trading_get_margin
 
 
 def make_ctx() -> AsyncMock:
@@ -19,7 +19,7 @@ def make_ctx() -> AsyncMock:
 
 
 @pytest.mark.asyncio
-@patch("milotic.api.base.BaseClient.get", new_callable=AsyncMock)
+@patch("api.base.BaseClient.get", new_callable=AsyncMock)
 async def test_trading_get_margin_uses_session_headers(mock_get: AsyncMock, mock_env):
     mock_get.return_value = {"available_margin": 1000}
     ctx = make_ctx()
@@ -34,7 +34,7 @@ async def test_trading_get_margin_uses_session_headers(mock_get: AsyncMock, mock
 
 
 @pytest.mark.asyncio
-@patch("milotic.api.base.BaseClient.get", new_callable=AsyncMock)
+@patch("api.base.BaseClient.get", new_callable=AsyncMock)
 async def test_trading_calculate_margin_uses_session_headers(mock_get: AsyncMock, mock_env):
     mock_get.return_value = {"required_margin": 500}
     ctx = make_ctx()
@@ -54,7 +54,7 @@ async def test_trading_get_margin_not_connected_returns_error(mock_env):
     ctx = AsyncMock()
     ctx.get_state.return_value = None
 
-    with patch("milotic.api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
+    with patch("api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
         result = await trading_get_margin(ctx)
 
     assert "error" in result

@@ -48,7 +48,7 @@ Crypto can be disabled for local dev with `CRYPTO_ENABLED=false`.
 2. Apply both decorators; name with `category_action_entity` (e.g. `market_get_quote`):
    ```python
    from fastmcp.tools import tool
-   from milotic.utils.decorators import milotic_tool
+   from utils.decorators import milotic_tool
 
    @tool()
    @milotic_tool

@@ -7,13 +7,13 @@ import httpx
 import pytest
 import respx
 
-from milotic.api.base import BaseClient
-from milotic.components.trading.orders import (
+from api.base import BaseClient
+from components.trading.orders import (
     trading_cancel_order,
     trading_get_order,
     trading_place_order,
 )
-from milotic.utils.errors import BackendConnectionError, RateLimitError
+from utils.errors import BackendConnectionError, RateLimitError
 
 
 def make_ctx() -> AsyncMock:
@@ -62,7 +62,7 @@ async def test_trading_rate_limit_raises(mock_env):
 
 @pytest.mark.asyncio
 async def test_trading_place_order_invalid_side(mock_env):
-    with patch("milotic.api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
+    with patch("api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
         ctx = make_ctx()
         result = await trading_place_order(
             ctx, symbol="AAPL", side="hold", quantity=10, order_type="market"
@@ -73,7 +73,7 @@ async def test_trading_place_order_invalid_side(mock_env):
 
 @pytest.mark.asyncio
 async def test_trading_place_order_invalid_order_type(mock_env):
-    with patch("milotic.api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
+    with patch("api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
         ctx = make_ctx()
         result = await trading_place_order(
             ctx, symbol="AAPL", side="buy", quantity=10, order_type="bogus"
@@ -84,7 +84,7 @@ async def test_trading_place_order_invalid_order_type(mock_env):
 
 @pytest.mark.asyncio
 async def test_trading_place_order_invalid_quantity(mock_env):
-    with patch("milotic.api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
+    with patch("api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
         ctx = make_ctx()
         result = await trading_place_order(
             ctx, symbol="AAPL", side="buy", quantity=0, order_type="market"
@@ -95,7 +95,7 @@ async def test_trading_place_order_invalid_quantity(mock_env):
 
 @pytest.mark.asyncio
 async def test_trading_place_order_negative_quantity(mock_env):
-    with patch("milotic.api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
+    with patch("api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
         ctx = make_ctx()
         result = await trading_place_order(
             ctx, symbol="AAPL", side="buy", quantity=-5, order_type="market"
@@ -106,7 +106,7 @@ async def test_trading_place_order_negative_quantity(mock_env):
 
 @pytest.mark.asyncio
 async def test_trading_place_order_missing_price_for_limit(mock_env):
-    with patch("milotic.api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
+    with patch("api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
         ctx = make_ctx()
         result = await trading_place_order(
             ctx, symbol="AAPL", side="buy", quantity=10, order_type="limit"
@@ -117,7 +117,7 @@ async def test_trading_place_order_missing_price_for_limit(mock_env):
 
 @pytest.mark.asyncio
 async def test_trading_place_order_missing_price_for_stop_limit(mock_env):
-    with patch("milotic.api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
+    with patch("api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
         ctx = make_ctx()
         result = await trading_place_order(
             ctx, symbol="AAPL", side="sell", quantity=10, order_type="stop_limit"
@@ -133,7 +133,7 @@ async def test_trading_place_order_missing_price_for_stop_limit(mock_env):
 
 @pytest.mark.asyncio
 async def test_trading_place_order_preview_does_not_call_backend(mock_env):
-    with patch("milotic.api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
+    with patch("api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
         ctx = make_ctx()
         result = await trading_place_order(
             ctx,
@@ -157,7 +157,7 @@ async def test_trading_place_order_preview_does_not_call_backend(mock_env):
 
 
 @pytest.mark.asyncio
-@patch("milotic.api.base.BaseClient.post", new_callable=AsyncMock)
+@patch("api.base.BaseClient.post", new_callable=AsyncMock)
 async def test_trading_place_order_confirmed_calls_backend_with_reference_id(
     mock_post: AsyncMock, mock_env
 ):
@@ -184,7 +184,7 @@ async def test_trading_place_order_confirmed_calls_backend_with_reference_id(
 
 
 @pytest.mark.asyncio
-@patch("milotic.api.base.BaseClient.post", new_callable=AsyncMock)
+@patch("api.base.BaseClient.post", new_callable=AsyncMock)
 async def test_trading_place_order_confirmed_timeout_returns_unknown(
     mock_post: AsyncMock, mock_env
 ):
@@ -212,7 +212,7 @@ async def test_trading_place_order_confirmed_timeout_returns_unknown(
 
 
 @pytest.mark.asyncio
-@patch("milotic.api.base.BaseClient.delete", new_callable=AsyncMock)
+@patch("api.base.BaseClient.delete", new_callable=AsyncMock)
 async def test_trading_cancel_order_uses_session_headers(mock_delete: AsyncMock, mock_env):
     mock_delete.return_value = {"status": "cancelled"}
     ctx = make_ctx()
@@ -227,7 +227,7 @@ async def test_trading_cancel_order_uses_session_headers(mock_delete: AsyncMock,
 
 
 @pytest.mark.asyncio
-@patch("milotic.api.base.BaseClient.get", new_callable=AsyncMock)
+@patch("api.base.BaseClient.get", new_callable=AsyncMock)
 async def test_trading_get_order_uses_session_headers(mock_get: AsyncMock, mock_env):
     mock_get.return_value = {"order_id": "order-1", "status": "open"}
     ctx = make_ctx()
@@ -246,7 +246,7 @@ async def test_trading_get_order_not_connected_returns_error(mock_env):
     ctx = AsyncMock()
     ctx.get_state.return_value = None
 
-    with patch("milotic.api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
+    with patch("api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
         result = await trading_get_order(ctx, order_id="order-1")
 
     assert "error" in result

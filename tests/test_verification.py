@@ -10,8 +10,8 @@ import pytest
 pytestmark = pytest.mark.asyncio
 
 
-@patch("milotic.api.base.SessionKeyProvider")
-@patch("milotic.api.handshake.HandshakeClient.get_public_key", new_callable=AsyncMock)
+@patch("api.base.SessionKeyProvider")
+@patch("api.handshake.HandshakeClient.get_public_key", new_callable=AsyncMock)
 async def test_base_client_full_flow(
     mock_get_public_key: AsyncMock,
     mock_session_provider: patch,
@@ -33,12 +33,12 @@ async def test_base_client_full_flow(
     monkeypatch.setenv("API_CLIENT_ID", "test-client")
     monkeypatch.setenv("API_SESSION_SECRET", "a-very-secure-32-byte-secret-key")
 
-    import milotic.config
-    importlib.reload(milotic.config)
+    import config
+    importlib.reload(config)
 
-    from milotic.api.base import BaseClient
-    from milotic.config import settings
-    from milotic.utils.crypto import MiloticCipher
+    from api.base import BaseClient
+    from config import settings
+    from utils.crypto import MiloticCipher
 
     # --- bootstrap ---
     client = await BaseClient.instance("trading")

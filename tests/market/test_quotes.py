@@ -6,9 +6,9 @@ import httpx
 import pytest
 import respx
 
-from milotic.api.base import BaseClient
-from milotic.components.market.quotes import market_get_quote, market_get_quotes_batch
-from milotic.utils.errors import BackendConnectionError, CircuitBreakerOpenError
+from api.base import BaseClient
+from components.market.quotes import market_get_quote, market_get_quotes_batch
+from utils.errors import BackendConnectionError, CircuitBreakerOpenError
 
 
 def make_ctx() -> AsyncMock:
@@ -35,7 +35,7 @@ async def test_market_get_quote_success(mock_env):
 
 @pytest.mark.asyncio
 async def test_circuit_breaker_opens_after_threshold(mock_env):
-    import milotic.config as cfg
+    import config as cfg
 
     with respx.mock(base_url="http://market.test") as router:
         router.get("/quotes/ERR").mock(return_value=httpx.Response(500))
@@ -54,7 +54,7 @@ async def test_circuit_breaker_opens_after_threshold(mock_env):
 
 
 @pytest.mark.asyncio
-@patch("milotic.api.base.BaseClient.get", new_callable=AsyncMock)
+@patch("api.base.BaseClient.get", new_callable=AsyncMock)
 async def test_market_get_quote_uses_session_headers(mock_get: AsyncMock, mock_env):
     mock_get.return_value = {"symbol": "AAPL", "price": 150.0}
     ctx = make_ctx()
@@ -69,7 +69,7 @@ async def test_market_get_quote_uses_session_headers(mock_get: AsyncMock, mock_e
 
 
 @pytest.mark.asyncio
-@patch("milotic.api.base.BaseClient.post", new_callable=AsyncMock)
+@patch("api.base.BaseClient.post", new_callable=AsyncMock)
 async def test_market_get_quotes_batch_uses_session_headers(mock_post: AsyncMock, mock_env):
     mock_post.return_value = {"quotes": []}
     ctx = make_ctx()
@@ -89,7 +89,7 @@ async def test_market_get_quote_not_connected_returns_error(mock_env):
     ctx = AsyncMock()
     ctx.get_state.return_value = None
 
-    with patch("milotic.api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
+    with patch("api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
         result = await market_get_quote(ctx, symbol="AAPL")
 
     assert "error" in result

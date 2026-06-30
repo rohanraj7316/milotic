@@ -6,8 +6,8 @@ import httpx
 import pytest
 import respx
 
-from milotic.api.base import BaseClient
-from milotic.components.research.signals import research_get_signal, research_list_signals
+from api.base import BaseClient
+from components.research.signals import research_get_signal, research_list_signals
 
 
 def make_ctx() -> AsyncMock:
@@ -33,7 +33,7 @@ async def test_research_get_signal_success(mock_env):
 
 
 @pytest.mark.asyncio
-@patch("milotic.api.base.BaseClient.get", new_callable=AsyncMock)
+@patch("api.base.BaseClient.get", new_callable=AsyncMock)
 async def test_research_get_signal_uses_session_headers(mock_get: AsyncMock, mock_env):
     mock_get.return_value = {"symbol": "AAPL", "signal": "buy"}
     ctx = make_ctx()
@@ -48,7 +48,7 @@ async def test_research_get_signal_uses_session_headers(mock_get: AsyncMock, moc
 
 
 @pytest.mark.asyncio
-@patch("milotic.api.base.BaseClient.get", new_callable=AsyncMock)
+@patch("api.base.BaseClient.get", new_callable=AsyncMock)
 async def test_research_list_signals_uses_session_headers(mock_get: AsyncMock, mock_env):
     mock_get.return_value = {"signals": []}
     ctx = make_ctx()
@@ -67,7 +67,7 @@ async def test_research_get_signal_not_connected_returns_error(mock_env):
     ctx = AsyncMock()
     ctx.get_state.return_value = None
 
-    with patch("milotic.api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
+    with patch("api.base.BaseClient.instance", new_callable=AsyncMock) as mock_instance:
         result = await research_get_signal(ctx, symbol="AAPL")
 
     assert "error" in result
