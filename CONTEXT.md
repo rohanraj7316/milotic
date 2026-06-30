@@ -62,7 +62,7 @@
 
 **system_connect_start** — initiates QR authentication. Returns a QR image (base64) and a session_id. No state is set until `system_connect_verify` succeeds.
 
-**system_connect_verify(session_id)** — polls the backend until the QR session is confirmed by the Mobile App (up to 120s timeout). On success, sets `auth_token` and `sub_account_id` in session state.
+**system_connect_verify** — polls the backend until the QR session is confirmed by the Mobile App (up to 120s timeout). Reads `qr_session_id` from session state (set by `system_connect_start`); the client does not pass it as a parameter. On success, sets `auth_token` and `sub_account_id` in session state.
 
 ---
 
