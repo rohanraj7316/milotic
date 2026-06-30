@@ -1,4 +1,5 @@
 import pytest
+
 from milotic.utils.crypto import MiloticCipher
 from milotic.utils.errors import CryptoError, DecryptionError
 

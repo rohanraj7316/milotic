@@ -1,12 +1,13 @@
 """
 Handles the creation of the RSA-encrypted X-API-Encryption-Key header.
 """
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.primitives.asymmetric import padding
-from cryptography.hazmat.primitives import serialization
 import base64
 
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import padding
+
 from milotic.utils.errors import CryptoError
+
 
 def _load_public_key(pem_or_der_b64: str):
     """
@@ -19,7 +20,7 @@ def _load_public_key(pem_or_der_b64: str):
             "-----BEGIN PUBLIC KEY-----\n"
             f"{pem_or_der_b64}\n"
             "-----END PUBLIC KEY-----"
-        ).encode("utf-8")
+        ).encode()
     else:
         pem_data = pem_or_der_b64.encode("utf-8")
 

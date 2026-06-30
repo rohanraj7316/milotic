@@ -1,8 +1,9 @@
+from collections.abc import Generator
+
 import pytest
 import pytest_asyncio
 import respx
 from httpx import Response
-from typing import Generator
 
 from milotic.api.handshake import HandshakeClient
 from milotic.utils.errors import HandshakeError

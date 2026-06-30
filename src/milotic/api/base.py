@@ -1,140 +1,216 @@
 """
 Core HTTP client for all Go backend communications.
 
-Implements the "Vortex" pattern for transparent encryption and decryption.
+Implements the "Vortex" pattern for transparent encryption/decryption,
+plus a per-category ClientRegistry with rate limiting and a circuit breaker.
 """
 
-import httpx
 import asyncio
-from typing import Optional, Any, Dict
+from typing import Any
 
-from milotic.config import settings
-from milotic.utils.logging import logger
-from milotic.utils.errors import BackendConnectionError, DecryptionError
+import httpx
+
+import milotic.config as _config
 from milotic.api.handshake import HandshakeClient
 from milotic.api.session import SessionKeyProvider
 from milotic.utils.crypto import MiloticCipher
+from milotic.utils.errors import (
+    BackendConnectionError,
+    CircuitBreakerOpenError,
+    DecryptionError,
+    HandshakeError,
+    RateLimitError,
+)
+from milotic.utils.logging import logger
+
+# Registry of one BaseClient instance per service category.
+_instances: dict[str, "BaseClient"] = {}
+_registry_lock = asyncio.Lock()
+
 
 class BaseClient:
     """
-    A singleton HTTP client that manages a crypto bootstrap process and
-    transparently encrypts/decrypts JSON payloads for all relevant requests.
+    Per-category HTTP client that manages crypto bootstrap and transparently
+    encrypts/decrypts JSON payloads. Use BaseClient.instance(category) to get
+    or lazily create the client for a given service.
     """
-    _instance: Optional["BaseClient"] = None
-    _lock = asyncio.Lock()
 
-    def __init__(self):
-        # Prevent direct instantiation
-        raise RuntimeError("Call instance() instead.")
+    def __init__(self) -> None:
+        raise RuntimeError("Call BaseClient.instance(category) instead.")
+
+    # ------------------------------------------------------------------
+    # Factory
+    # ------------------------------------------------------------------
 
     @classmethod
-    async def instance(cls) -> "BaseClient":
-        """Get the singleton instance, initializing it if necessary."""
-        if cls._instance:
-            return cls._instance
-        async with cls._lock:
-            if cls._instance:
-                return cls._instance  # Return instance if created by another coroutine
-            
-            # Create and bootstrap the instance
-            new_instance = cls.__new__(cls)
-            new_instance._http_client = httpx.AsyncClient(base_url=settings.GO_BACKEND_URL)
-            new_instance._session_key_provider: Optional[SessionKeyProvider] = None
-            new_instance._cipher: Optional[MiloticCipher] = None
-            new_instance._encrypted_session_header: Optional[str] = None
-            
-            if settings.CRYPTO_ENABLED:
-                await new_instance._bootstrap_crypto()
+    async def instance(cls, category: str) -> "BaseClient":
+        """Return the singleton BaseClient for *category*, creating it if needed."""
+        if category in _instances:
+            return _instances[category]
 
-            cls._instance = new_instance
-            return new_instance
+        async with _registry_lock:
+            if category in _instances:
+                return _instances[category]
 
-    async def _bootstrap_crypto(self):
-        """
-        Performs the initial handshake and sets up the session-level crypto
-        components (session key provider, cipher, and encrypted header).
-        """
-        logger.info("crypto_bootstrap_start")
-        handshake_client = HandshakeClient(
-            base_url=settings.GO_BACKEND_URL,
-            path=settings.HANDSHAKE_PATH,
-            client_id_header=settings.HANDSHAKE_CLIENT_ID_HEADER,
-        )
+            new = cls.__new__(cls)
+            new._category = category
+            new._base_url = _config.settings.backend_url(category)
+            new._http_client = httpx.AsyncClient(base_url=new._base_url)
+            new._semaphore = asyncio.Semaphore(_config.settings.MAX_CONCURRENT_REQUESTS)
+            new._consecutive_failures = 0
+            new._circuit_open = False
+            new._session_key_provider: SessionKeyProvider | None = None
+            new._cipher: MiloticCipher | None = None
+            new._encrypted_session_header: str | None = None
+            new._handshake_client = HandshakeClient(
+                base_url=new._base_url,
+                path=_config.settings.HANDSHAKE_PATH,
+                client_id_header=_config.settings.HANDSHAKE_CLIENT_ID_HEADER,
+            )
 
-        public_key = await handshake_client.get_public_key(settings.API_CLIENT_ID)
-        
+            if _config.settings.CRYPTO_ENABLED:
+                await new._bootstrap_crypto()
+
+            _instances[category] = new
+            return new
+
+    @classmethod
+    def reset(cls, category: str | None = None) -> None:
+        """Remove one or all cached instances (primarily for testing)."""
+        if category:
+            _instances.pop(category, None)
+        else:
+            _instances.clear()
+
+    # ------------------------------------------------------------------
+    # Crypto bootstrap
+    # ------------------------------------------------------------------
+
+    async def _bootstrap_crypto(self) -> None:
+        logger.info("crypto_bootstrap_start", category=self._category)
+        public_key = await self._handshake_client.get_public_key(_config.settings.API_CLIENT_ID)
         self._session_key_provider = SessionKeyProvider(public_key)
         self._encrypted_session_header = self._session_key_provider.encrypt_session_for_header(
-            settings.API_SESSION_SECRET
+            _config.settings.API_SESSION_SECRET
         )
-        self._cipher = MiloticCipher(settings.API_SESSION_SECRET)
-        logger.info("crypto_bootstrap_success")
+        self._cipher = MiloticCipher(_config.settings.API_SESSION_SECRET)
+        logger.info("crypto_bootstrap_success", category=self._category)
 
-    async def request(
-        self, method: str, path: str, **kwargs: Any
-    ) -> Dict[str, Any]:
-        """
-        The main entrypoint for making requests. Handles transparent encryption
-        and decryption if crypto is enabled.
-        """
-        # Read-only guard
-        if method.upper() not in ["GET", "HEAD", "OPTIONS"]:
-            # A whitelist can be added here for specific auth POSTs if needed
-            logger.warning("read_only_guard_violation", method=method, path=path)
-            # In a real scenario, you might raise an error. For now, we log.
+    async def _refresh_crypto(self) -> None:
+        """Clear the handshake cache and re-bootstrap (called on 401)."""
+        logger.warning("crypto_refresh_triggered", category=self._category)
+        self._handshake_client.get_public_key.cache_clear()
+        await self._bootstrap_crypto()
 
-        headers = kwargs.pop("headers", {})
+    # ------------------------------------------------------------------
+    # Circuit breaker helpers
+    # ------------------------------------------------------------------
+
+    def _record_success(self) -> None:
+        self._consecutive_failures = 0
+        self._circuit_open = False
+
+    def _record_failure(self) -> None:
+        self._consecutive_failures += 1
+        if self._consecutive_failures >= _config.settings.CIRCUIT_BREAKER_THRESHOLD:
+            if not self._circuit_open:
+                logger.error(
+                    "circuit_breaker_opened",
+                    category=self._category,
+                    failures=self._consecutive_failures,
+                )
+            self._circuit_open = True
+
+    # ------------------------------------------------------------------
+    # Core request
+    # ------------------------------------------------------------------
+
+    async def request(self, method: str, path: str, **kwargs: Any) -> dict[str, Any]:
+        """
+        Make an HTTP request to the category backend with optional transparent
+        AES encryption. Enforces the circuit breaker and rate-limiting semaphore.
+        """
+        if self._circuit_open:
+            raise CircuitBreakerOpenError(
+                f"Circuit breaker open for '{self._category}'. "
+                f"After {self._consecutive_failures} consecutive failures."
+            )
+
+        async with self._semaphore:
+            return await self._do_request(method, path, **kwargs)
+
+    async def _do_request(
+        self, method: str, path: str, _retry_on_401: bool = True, **kwargs: Any
+    ) -> dict[str, Any]:
+        headers: dict[str, str] = kwargs.pop("headers", {})
         json_payload = kwargs.pop("json", None)
 
-        if settings.CRYPTO_ENABLED:
+        if _config.settings.CRYPTO_ENABLED:
             if not self._cipher or not self._encrypted_session_header:
-                raise BackendConnectionError("Crypto components not initialized. Bootstrap may have failed.")
-
-            headers[settings.HANDSHAKE_CLIENT_ID_HEADER] = settings.API_CLIENT_ID
+                raise BackendConnectionError(
+                    "Crypto components not initialised. Bootstrap may have failed."
+                )
+            headers[_config.settings.HANDSHAKE_CLIENT_ID_HEADER] = _config.settings.API_CLIENT_ID
             headers["X-API-Encryption-Key"] = self._encrypted_session_header
-            
             if json_payload is not None:
-                encrypted_wrapper = self._cipher.encrypt_json(json_payload)
-                kwargs["json"] = encrypted_wrapper
+                kwargs["json"] = self._cipher.encrypt_json(json_payload)
 
         try:
-            response = await self._http_client.request(method, path, headers=headers, **kwargs)
+            response = await self._http_client.request(
+                method, path, headers=headers, **kwargs
+            )
+
+            # Handle key rotation: refresh and retry once
+            if response.status_code == 401 and _retry_on_401 and _config.settings.CRYPTO_ENABLED:
+                logger.warning("auth_401_refreshing_key", category=self._category, path=path)
+                await self._refresh_crypto()
+                return await self._do_request(
+                    method, path, _retry_on_401=False, **kwargs
+                )
+
+            if response.status_code == 429:
+                self._record_failure()
+                raise RateLimitError()
+
             response.raise_for_status()
-            
-            # Handle possible empty response body
+
+            self._record_success()
+
             if not response.content:
                 return {}
-            
+
             response_data = response.json()
-            
-            if settings.CRYPTO_ENABLED and response_data:
-                # Decrypt the payload before returning
+
+            if _config.settings.CRYPTO_ENABLED and response_data:
                 return self._cipher.decrypt_json(response_data)
-            
+
             return response_data
 
+        except (RateLimitError, DecryptionError, HandshakeError, CircuitBreakerOpenError):
+            raise
         except httpx.HTTPStatusError as e:
-            # Handle HTTP errors
+            self._record_failure()
             raise BackendConnectionError(
-                f"Request failed with status {e.response.status_code}"
+                f"Request to '{self._category}' failed with status {e.response.status_code}."
             ) from e
-        except DecryptionError as e:
-            # Re-raise decryption errors to be handled by the tool decorator
-            raise e
         except Exception as e:
-            # Handle other errors (connection, timeout, etc.)
-            raise BackendConnectionError("An unexpected error occurred during the request.") from e
+            self._record_failure()
+            raise BackendConnectionError(
+                f"Unexpected error communicating with '{self._category}' backend."
+            ) from e
 
-    # --- Convenience methods ---
+    # ------------------------------------------------------------------
+    # Convenience methods
+    # ------------------------------------------------------------------
 
-    async def get(self, path: str, **kwargs: Any) -> Dict[str, Any]:
+    async def get(self, path: str, **kwargs: Any) -> dict[str, Any]:
         return await self.request("GET", path, **kwargs)
 
-    async def post(self, path: str, **kwargs: Any) -> Dict[str, Any]:
+    async def post(self, path: str, **kwargs: Any) -> dict[str, Any]:
         return await self.request("POST", path, **kwargs)
 
-    async def put(self, path: str, **kwargs: Any) -> Dict[str, Any]:
+    async def put(self, path: str, **kwargs: Any) -> dict[str, Any]:
         return await self.request("PUT", path, **kwargs)
 
-    async def delete(self, path: str, **kwargs: Any) -> Dict[str, Any]:
+    async def delete(self, path: str, **kwargs: Any) -> dict[str, Any]:
         return await self.request("DELETE", path, **kwargs)

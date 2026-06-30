@@ -5,13 +5,12 @@ This client uses a plain httpx client, NOT the BaseClient, to avoid a
 circular dependency during the crypto bootstrap process.
 """
 
+
 import httpx
-import asyncio
-from typing import Optional
 from async_lru import alru_cache
 
-from milotic.utils.logging import logger
 from milotic.utils.errors import HandshakeError
+from milotic.utils.logging import logger
 
 # Default cache TTL for the public key (e.g., 1 hour)
 DEFAULT_CACHE_TTL_SECONDS = 3600
@@ -73,7 +72,7 @@ class HandshakeClient:
             raise HandshakeError(
                 f"Handshake failed with status {e.response.status_code}."
             ) from e
-        except (httpx.RequestError, asyncio.TimeoutError) as e:
+        except (TimeoutError, httpx.RequestError) as e:
             logger.error("handshake_connection_error", error=str(e), **log_params)
             raise HandshakeError("Could not connect to the backend for handshake.") from e
         except Exception as e:
