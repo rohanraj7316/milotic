@@ -35,6 +35,11 @@ class Settings(BaseSettings):
     # --- Logging ---
     LOG_LEVEL: str = "INFO"
 
+    # --- Trading session headers ---
+    # TBD — confirm exact header names against Axis Direct RAPID API docs before production use
+    TRADING_AUTH_HEADER: str = "X-Auth-Token"
+    TRADING_SUB_ACCOUNT_HEADER: str = "X-Sub-Account-Id"
+
     def backend_url(self, category: str) -> str:
         mapping = {
             "market": self.MARKET_BACKEND_URL,

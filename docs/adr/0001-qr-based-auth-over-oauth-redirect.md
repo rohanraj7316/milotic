@@ -21,7 +21,7 @@ Use QR-based device linking (option 3).
 - OAuth redirect (option 1) requires HTTP transport, breaking the current stdio model. Local port conflicts and firewall issues are common for non-technical users.
 - Token-paste (option 2) is manual friction on every token rotation (daily).
 - The Mobile App already implements QR scan and device-link capability — no new mobile work required.
-- QR flow works with stdio: `system_connect` returns the QR image, `system_connect_verify` polls for confirmation. No inbound HTTP port needed.
+- QR flow works with stdio: `system_connect_start` returns the QR image, `system_connect_verify` polls for confirmation. No inbound HTTP port needed.
 - Two-tool pattern solves the display-before-poll UX constraint: QR is shown to the user between tool calls.
 
 ## Consequences
