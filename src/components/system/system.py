@@ -1,9 +1,10 @@
 """System-related tools for Milotic Gateway."""
 
-import asyncio
 import contextlib
 import json
+import webbrowser
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 from fastmcp import Context
 from fastmcp.tools import tool
@@ -11,46 +12,8 @@ from fastmcp.tools import tool
 from api.base import BaseClient
 from utils.constants import VERSION
 from utils.decorators import milotic_tool
+from utils.loopback import default_loopback
 from utils.session import get_session_headers
-
-_latest_sso_id: str | None = None
-_loopback_server: asyncio.AbstractServer | None = None
-
-
-async def _start_loopback_server() -> int:
-    """Starts a non-blocking TCP server on a random free port to capture ssoId."""
-    global _loopback_server, _latest_sso_id
-
-    if _loopback_server:
-        with contextlib.suppress(Exception):
-            _loopback_server.close()
-
-    async def handle_client(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
-        global _latest_sso_id
-        try:
-            data = await reader.read(1024)
-            request = data.decode("utf-8", errors="ignore")
-            first_line = request.split("\n")[0] if request else ""
-            if "ssoId=" in first_line:
-                _latest_sso_id = first_line.split("ssoId=")[1].split(" ")[0].split("&")[0]
-
-            response = (
-                "HTTP/1.1 200 OK\r\n"
-                "Content-Type: text/html\r\n"
-                "Connection: close\r\n\r\n"
-                "<html><body style='font-family:sans-serif;text-align:center;padding-top:50px;'>"
-                "<h1>Login Successful!</h1><p>You can close this tab and return to the chat.</p>"
-                "</body></html>"
-            )
-            writer.write(response.encode("utf-8"))
-            await writer.drain()
-        finally:
-            writer.close()
-            with contextlib.suppress(Exception):
-                await writer.wait_closed()
-
-    _loopback_server = await asyncio.start_server(handle_client, "127.0.0.1", 0)
-    return _loopback_server.sockets[0].getsockname()[1]
 
 
 @tool()
@@ -70,19 +33,23 @@ async def system_connect_start(ctx: Context) -> dict:
     Initiate Single Sign-On (SSO) authentication. Starts a local loopback server to
     capture redirect, and returns the login redirect URL.
     """
-    # ponytail: start background loopback server to capture callback dynamically
-    port = await _start_loopback_server()
-    local_redirect = f"http://127.0.0.1:{port}/callback"
+    # ponytail: ephemeral loopback server with CSRF state verification and auto-expiry
+    port, csrf_state = await default_loopback.start(timeout_seconds=180)
+    local_redirect = f"http://127.0.0.1:{port}/callback?state={csrf_state}"
 
     client = await BaseClient.instance("login")
     payload = {
         "type": "LOGIN",
         "redirectURL": local_redirect,
-        "metadata": {"name": "milotic"},
+        "metadata": {"name": "milotic", "state": csrf_state},
     }
 
     session = await client.post("/sso/initiate", json=payload)
     redirect_url = session.get("data", {}).get("redirectURL", "")
+
+    # Best-effort automatic browser opening for desktop environments
+    with contextlib.suppress(Exception):
+        webbrowser.open(redirect_url)
 
     return {
         "redirect_url": redirect_url,
@@ -114,14 +81,11 @@ async def system_connect_verify(ctx: Context, redirect_url: str | None = None) -
     Check whether Single Sign-On (SSO) authentication has been completed.
     redirect_url: Optional manual override. Paste the browser redirect URL here if blocked.
     """
-    global _latest_sso_id, _loopback_server
-
-    sso_id = None
-    if redirect_url and "ssoId=" in redirect_url:
-        sso_id = redirect_url.split("ssoId=")[-1].split("&")[0]
-
-    if not sso_id:
-        sso_id = _latest_sso_id
+    sso_id = (
+        parse_qs(urlsplit(redirect_url).query).get("ssoId", [None])[0]
+        if redirect_url
+        else default_loopback.consume_sso_id()
+    )
 
     if not sso_id:
         return {
@@ -131,12 +95,8 @@ async def system_connect_verify(ctx: Context, redirect_url: str | None = None) -
             ),
         }
 
-    # Stop the loopback server since we got the ssoId
-    if _loopback_server:
-        _loopback_server.close()
-        _loopback_server = None
-
-    _latest_sso_id = None  # Consume the captured ID
+    # Stop loopback server since we captured the ssoId
+    await default_loopback.close()
 
     client = await BaseClient.instance("login")
     try:

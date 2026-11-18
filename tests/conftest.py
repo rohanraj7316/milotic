@@ -20,6 +20,7 @@ def mock_env(monkeypatch):
     """Inject all required env vars and reload Settings so BaseClient picks them up."""
     monkeypatch.setenv("CRYPTO_ENABLED", "false")
     monkeypatch.setenv("API_CLIENT_ID", "test-client")
+    monkeypatch.setenv("AUTHORIZATION", "test-auth")
     monkeypatch.setenv("API_SESSION_SECRET", "a" * 32)
     monkeypatch.setenv("LOGIN_BACKEND_URL", "http://login.test")
     monkeypatch.setenv("INVESTOR_BACKEND_URL", "http://investor.test")

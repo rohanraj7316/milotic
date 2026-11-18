@@ -13,6 +13,11 @@ import httpx
 import config as _config
 from api.handshake import HandshakeClient
 from api.session import SessionKeyProvider
+from utils.constants import (
+    HEADER_API_CLIENT_ID,
+    HEADER_API_ENCRYPTION_KEY,
+    HEADER_AUTHORIZATION,
+)
 from utils.crypto import MiloticCipher
 from utils.errors import (
     BackendConnectionError,
@@ -80,8 +85,8 @@ class BaseClient:
             new._encrypted_session_header: str | None = None
             new._handshake_client = HandshakeClient(
                 url=_config.settings.HANDSHAKE_URL,
-                client_authorization_header=_config.settings.CONST_AUTHORIZATION_HEADER_KEY,
-                client_id_header=_config.settings.CONST_CLIENT_ID_HEADER_KEY,
+                client_authorization_header=HEADER_AUTHORIZATION,
+                client_id_header=HEADER_API_CLIENT_ID,
             )
 
             if _config.settings.CRYPTO_ENABLED:
@@ -169,11 +174,9 @@ class BaseClient:
                 raise BackendConnectionError(
                     "Crypto components not initialised. Bootstrap may have failed."
                 )
-            headers[_config.settings.CONST_CLIENT_ID_HEADER_KEY] = _config.settings.API_CLIENT_ID
-            headers[_config.settings.CONST_AUTHORIZATION_HEADER_KEY] = (
-                _config.settings.AUTHORIZATION
-            )
-            headers["X-API-Encryption-Key"] = self._encrypted_session_header
+            headers[HEADER_API_CLIENT_ID] = _config.settings.API_CLIENT_ID
+            headers[HEADER_AUTHORIZATION] = _config.settings.AUTHORIZATION
+            headers[HEADER_API_ENCRYPTION_KEY] = self._encrypted_session_header
             if json_payload is not None:
                 kwargs["json"] = self._cipher.encrypt_json(json_payload)
         elif json_payload is not None:

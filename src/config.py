@@ -14,8 +14,9 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    API_CLIENT_ID: str = "GALAXY_WEBAPP"
-    AUTHORIZATION: str = "CAOsBGMOSvj19jGNIRZpLY62Hd6yLA1r77H9MnQ4UyjaOsdo"
+    # --- Client Credentials (Injected from Environment) ---
+    API_CLIENT_ID: str = ""
+    AUTHORIZATION: str = ""
 
     # --- Backend Service URLs ---
     LOGIN_BACKEND_URL: str = "https://welcome-api.axisdirect.in"
@@ -30,12 +31,6 @@ class Settings(BaseSettings):
     # --- Handshake Configuration ---
     HANDSHAKE_URL: str = "https://welcome-api.axisdirect.in/handshake"
     HANDSHAKE_PUBLIC_KEY_TTL_SECONDS: int = 3600
-
-    # --- Headers Configuration ---
-    CONST_AUTHORIZATION_HEADER_KEY: str = "authorization"
-    CONST_AUTH_HEADER_KEY: str = "x-authToken"
-    CONST_SUB_ACCOUNT_HEADER_KEY: str = "x-subAccountId"
-    CONST_CLIENT_ID_HEADER_KEY: str = "x-api-client-id"
 
     # --- Resilience ---
     MAX_CONCURRENT_REQUESTS: int = 20

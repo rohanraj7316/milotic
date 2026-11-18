@@ -2,7 +2,7 @@
 
 from fastmcp import Context
 
-import config as _config
+from utils.constants import HEADER_AUTH_TOKEN, HEADER_SUB_ACCOUNT_ID
 from utils.errors import BackendConnectionError
 
 
@@ -13,8 +13,8 @@ async def get_session_headers(ctx: Context) -> dict[str, str]:
     if not auth_token:
         raise BackendConnectionError("Not connected. Call system_connect_start first.")
     headers = {
-        _config.settings.CONST_AUTH_HEADER_KEY: auth_token,
+        HEADER_AUTH_TOKEN: auth_token,
     }
     if sub_account_id:
-        headers[_config.settings.CONST_SUB_ACCOUNT_HEADER_KEY] = sub_account_id
+        headers[HEADER_SUB_ACCOUNT_ID] = sub_account_id
     return headers

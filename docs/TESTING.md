@@ -112,7 +112,12 @@ uv run python src/server.py
         "/absolute/path/to/milotic",
         "python",
         "src/server.py"
-      ]
+      ],
+      "env": {
+        "PYTHONPATH": "src",
+        "API_CLIENT_ID": "GALAXY_WEBAPP",
+        "AUTHORIZATION": "your-authorization-token"
+      }
     }
   }
 }

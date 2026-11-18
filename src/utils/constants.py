@@ -14,8 +14,8 @@ CATEGORY_RESEARCH = "research"
 HEADER_REQUEST_ID = "X-Req-ID"
 
 # --- Authentication Headers ---
-HEADER_AUTHORIZATION = "Authorization"
-HEADER_AUTH_TOKEN = "X-AuthToken"
+HEADER_AUTHORIZATION = "authorization"
+HEADER_AUTH_TOKEN = "x-authToken"
 HEADER_ASL_TOKEN = "X-AslToken"
 HEADER_REFRESH_TOKEN = "X-Refresh-Token"
 
@@ -24,11 +24,11 @@ HEADER_DEVICE_ID = "X-DeviceId"
 HEADER_APP_ID = "X-AppId"
 
 # --- Crypto / Encryption ---
-HEADER_API_CLIENT_ID = "X-API-Client-Id"
+HEADER_API_CLIENT_ID = "x-api-client-id"
 HEADER_API_ENCRYPTION_KEY = "X-API-Encryption-Key"
 
 # --- Account ---
-HEADER_SUB_ACCOUNT_ID = "X-SubAccountID"
+HEADER_SUB_ACCOUNT_ID = "x-subAccountId"
 
 # --- Messaging ---
 HEADER_MSG_SEQUENCE = "X-MsgSequence"

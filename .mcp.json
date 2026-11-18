@@ -3,8 +3,12 @@
     "milotic": {
       "command": "uv",
       "args": ["run", "python", "src/server.py"],
-      "cwd": "/Users/unio/go/src/ds/milotic",
-      "env": { "PYTHONPATH": "src" }
+      "cwd": "/Users/unio/go/src/fc/milotic",
+      "env": {
+        "PYTHONPATH": "src",
+        "API_CLIENT_ID": "${env:AXIS_CLIENT_ID}",
+        "AUTHORIZATION": "${env:AXIS_AUTHORIZATION_TOKEN}"
+      }
     }
   }
 }

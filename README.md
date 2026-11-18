@@ -38,14 +38,22 @@ Create your local `.env` file from `.env.example`:
 cp .env.example .env
 ```
 
-| Variable | Purpose | Default / Example |
-|----------|---------|-------------------|
-| `ACCOUNT_BACKEND_URL` | Base URL for account/portfolio endpoints | `http://localhost:8000` |
-| `TRADING_BACKEND_URL` | Base URL for trading/order execution endpoints | `http://localhost:8000` |
-| `HANDSHAKE_URL` | URL to fetch RSA public key for encryption | `http://localhost:8000/public-key` |
-| `CRYPTO_ENABLED` | Master toggle for AES payload encryption | `true` |
-| `API_CLIENT_ID` | Sent as `X-API-Client-Id` header | `your-client-id` |
-| `API_SESSION_SECRET` | 32+ byte AES session secret key | `32_byte_secret_key_here` |
+### Required Credentials
+
+| Variable | Purpose | Header | Example |
+|----------|---------|--------|---------|
+| `API_CLIENT_ID` | Client app identifier registered with Axis Direct | `x-api-client-id` | `GALAXY_WEBAPP` |
+| `AUTHORIZATION` | Master client authorization token | `authorization` | `your-authorization-token` |
+
+### Backend Endpoints & Defaults (Optional Overrides)
+
+| Variable | Purpose | Default |
+|----------|---------|---------|
+| `LOGIN_BACKEND_URL` | Base URL for SSO login & authentication | `https://welcome-api.axisdirect.in` |
+| `INVESTOR_BACKEND_URL` | Base URL for portfolio, books & trading orders | `https://invest-api.axisdirect.in` |
+| `HANDSHAKE_URL` | RSA public key handshake endpoint | `https://welcome-api.axisdirect.in/handshake` |
+| `CRYPTO_ENABLED` | Master toggle for AES/RSA payload encryption | `true` |
+| `API_SESSION_SECRET` | 32-char hex AES session key | Auto-generated random secret |
 | `MAX_CONCURRENT_REQUESTS` | Per-client request concurrency cap | `20` |
 | `CIRCUIT_BREAKER_THRESHOLD` | Consecutive failures before circuit opens | `5` |
 | `LOG_LEVEL` | Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) | `INFO` |
@@ -115,7 +123,12 @@ Add to your Cursor settings (`.cursor/mcp.json` or Global MCP Settings):
         "/path/to/milotic",
         "python",
         "src/server.py"
-      ]
+      ],
+      "env": {
+        "PYTHONPATH": "src",
+        "API_CLIENT_ID": "GALAXY_WEBAPP",
+        "AUTHORIZATION": "your-authorization-token"
+      }
     }
   }
 }
@@ -136,7 +149,12 @@ Add to your `claude_desktop_config.json`:
         "/path/to/milotic",
         "python",
         "src/server.py"
-      ]
+      ],
+      "env": {
+        "PYTHONPATH": "src",
+        "API_CLIENT_ID": "GALAXY_WEBAPP",
+        "AUTHORIZATION": "your-authorization-token"
+      }
     }
   }
 }
@@ -204,11 +222,12 @@ from fastmcp.tools import tool
 from utils.decorators import milotic_tool
 from api.base import BaseClient
 
+
 @tool()
 @milotic_tool
 async def books_get_holdings(symbol: str | None = None) -> dict:
     """Retrieve holdings from books account with optional symbol filtering."""
-    client = await BaseClient.instance("account")
+    client = await BaseClient.instance("investor")
     params = {"symbol": symbol} if symbol else {}
     return await client.get("/holdings", params=params)
 ```
@@ -225,8 +244,8 @@ uv run pytest
 
 | Symptom | Cause / Fix |
 |---------|-------------|
-| `ModuleNotFoundError: src` | Ensure commands are executed from the repo root with `uv run` |
-| `BackendConnectionError` | Check that backend URLs (`ACCOUNT_BACKEND_URL`, etc.) are configured in `.env` |
+| `ModuleNotFoundError: src` | Ensure commands are executed from the repo root with `uv run` and `PYTHONPATH=src` |
+| `BackendConnectionError` | Verify network access to `LOGIN_BACKEND_URL` / `INVESTOR_BACKEND_URL` and valid credentials in `.env` |
 | Tools not showing in MCP client | Verify tool files in `src/components/` use both `@tool()` and `@milotic_tool` |
 | Server process blocks | Expected behavior for stdio transport; connect via an MCP client or Inspector |
 | Circuit breaker opens | Backend endpoint exceeded failure threshold; inspect backend status |
